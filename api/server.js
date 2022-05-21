@@ -29,7 +29,39 @@ var spotifyApi = new SpotifyWebApi({
 });
 
 fastify.get('/', async (request, reply) => {
-    return { hello: uuid() }
+    return { playList: appState.playList }
+})
+
+fastify.get('/play-song', async (request, reply) => {
+    await spotifyApi.addToQueue(request.query.id)
+    await spotifyApi.skipToNext()
+    return true
+})
+
+fastify.get('/search', async (request, reply) => {
+    const result = await spotifyApi.searchTracks(request.query.query, {
+        limit: 20,
+    })
+
+    return result.body.tracks.items
+})
+
+fastify.get('/add-example', async (request, reply) => {
+
+    appState.playList = [
+        ...appState.playList,
+        'lol'
+    ]
+
+    spotifyApi.skipToNext()
+  .then(function() {
+    console.log('Skip to next');
+  }, function(err) {
+    //if the user making the request is non-premium, a 403 FORBIDDEN response code will be returned
+    console.log('Something went wrong!', err);
+  });
+
+    return true
 })
 
 // Handle spotify redirect
@@ -62,30 +94,18 @@ fastify.get('/redirect', async (request) => {
 
 // Connect to spotify
 fastify.get('/spotify', (req, reply) => {
-    const scopes = ['user-read-private', 'user-read-email']
+    const scopes = [
+        'streaming'
+    ]
     const authorizeURL = spotifyApi.createAuthorizeURL(scopes, req.query.state);
     return reply.redirect(303, authorizeURL)
-})
-
-fastify.get('/test', async (request) => {
-
-    spotifyApi.getArtistAlbums('43ZHCT0cAZBISjO8DG9PnE').then(
-        function (data) {
-            console.log('Artist albums', data.body);
-        },
-        function (err) {
-            console.error(err);
-        }
-    );
-
-    return true
 })
 
 // #### FOX BOX ####
 
 // The state is stored in memory :)
 const appState = {
-
+    playList: [],
 }
 
 // Run the server!
